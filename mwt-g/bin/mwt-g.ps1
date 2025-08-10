@@ -2,7 +2,7 @@
 
 <#!
 .SYNOPSIS
-  mwt-g: Minimal URL alias tool (v00.01.01)
+  mwt-g: Minimal URL alias tool (v00.01.03)
 
 .DESCRIPTION
   Stores simple alias -> URL mappings in TOML and resolves them.
@@ -25,9 +25,15 @@
     mwt-g.ps1 <alias>
     mwt-g.ps1 +n <alias>
 
+  Fetch via curl (+c):
+    mwt-g.ps1 +c <alias>
+
+  Open in default browser (+b):
+    mwt-g.ps1 +b <alias>
+
   Notes:
-    - Only absolute http/https URLs are supported in v00.01.01
-    - Other actions (+c, +b, +register) are not implemented yet
+    - Only absolute http/https URLs are supported in this version
+    - +c and +b are implemented; +register is not implemented yet
 !#>
 
 [CmdletBinding()]
@@ -190,12 +196,18 @@ Usage:
     mwt-g.ps1 <alias>
     mwt-g.ps1 +n <alias>
 
+  Fetch via curl (+c):
+    mwt-g.ps1 +c <alias>
+
+  Open in default browser (+b):
+    mwt-g.ps1 +b <alias>
+
   List aliases:
     mwt-g.ps1 +list
 
 Notes:
-  - Only absolute http/https URLs are supported in v00.01.01
-  - Other actions (+c, +b, +register) are not implemented yet
+  - Only absolute http/https URLs are supported
+  - +register is not implemented yet
   - Flags:
       +quiet                       Suppress non-essential output
       +overwrite-alias <mode>      Mode is one of: always | never | ask
@@ -292,6 +304,49 @@ function Invoke-CurlFetch {
     }
 }
 
+function Invoke-OpenBrowser {
+    param([string] $Alias)
+    $url = Resolve-AliasOrFail -Alias $Alias
+
+    # If in test/dry-run mode, emit the URL and do not launch
+    if ($env:MWT_G_BROWSER_DRYRUN) {
+        Write-Output $url
+        return
+    }
+
+    # Allow overriding the browser command for testing or customization
+    $customCmd = $env:MWT_G_BROWSER_CMD
+    if ($customCmd) {
+        if (-not $script:QuietMode) { Write-Info "$customCmd $url" }
+        & $customCmd $url
+        return
+    }
+
+    # Default behavior by platform
+    if ($IsWindows) {
+        if (-not $script:QuietMode) { Write-Info "Start-Process $url" }
+        Start-Process -FilePath $url | Out-Null
+        return
+    }
+    # macOS
+    $openCmd = Get-Command open -ErrorAction SilentlyContinue
+    if ($openCmd) {
+        if (-not $script:QuietMode) { Write-Info "open $url" }
+        & $openCmd.Path $url | Out-Null
+        return
+    }
+    # Linux/other
+    $xdgCmd = Get-Command xdg-open -ErrorAction SilentlyContinue
+    if ($xdgCmd) {
+        if (-not $script:QuietMode) { Write-Info "xdg-open $url" }
+        & $xdgCmd.Path $url | Out-Null
+        return
+    }
+
+    Write-Error "No suitable method found to open URL in browser. Tried: custom cmd, Start-Process, open, xdg-open."
+    exit 13
+}
+
 # Entry
 if (-not $ArgList -or $ArgList.Length -eq 0) {
     Show-UsageAndExit
@@ -351,7 +406,13 @@ switch ($true) {
             Invoke-CurlFetch -Alias $alias
             exit 0
         }
-        Write-Error "Action '$first' is not implemented in v00.01.01"
+        if ($first -eq '+b') {
+            if ($ArgList.Length -lt 2) { Show-UsageAndExit }
+            $alias = $ArgList[1]
+            Invoke-OpenBrowser -Alias $alias
+            exit 0
+        }
+        Write-Error "Action '$first' is not implemented"
         exit 10
     }
 

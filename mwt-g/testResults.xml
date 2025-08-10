@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<test-results xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="nunit_schema_2.5.xsd" name="Pester" total="15" errors="0" failures="0" not-run="0" inconclusive="0" ignored="0" skipped="0" invalid="0" date="2025-08-10" time="01:30:41">
+  <environment os-version="24.6.0" machine-name="Mac.tam.net" cwd="/Users/mwt/projects/mwt-tools/mwt-g" clr-version="9.0.6" nunit-version="2.5.8.0" user="mwt" platform="Darwin" user-domain="" />
+  <culture-info current-culture="en-US" current-uiculture="en-US" />
+  <test-suite type="TestFixture" name="Pester" executed="True" result="Success" success="True" time="0.9265" asserts="0" description="Pester">
+    <results>
+      <test-suite type="TestFixture" name="/Users/mwt/projects/mwt-tools/mwt-g/tests/test-pester.Tests.ps1" executed="True" result="Success" success="True" time="0.9265" asserts="0" description="/Users/mwt/projects/mwt-tools/mwt-g/tests/test-pester.Tests.ps1">
+        <results>
+          <test-suite type="TestFixture" name="mwt-g core behaviors [T0000]" executed="True" result="Success" success="True" time="0.7796" asserts="0" description="mwt-g core behaviors [T0000]">
+            <results>
+              <test-case description="adds alias to aliases.toml [T0001]" name="mwt-g core behaviors [T0000].adds alias to aliases.toml [T0001]" time="0.0821" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="displays URL for alias (default and +n) [T0002]" name="mwt-g core behaviors [T0000].displays URL for alias (default and +n) [T0002]" time="0.0332" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="throws for unknown alias [T0003]" name="mwt-g core behaviors [T0000].throws for unknown alias [T0003]" time="0.0204" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="lists aliases with +list [T0004]" name="mwt-g core behaviors [T0000].lists aliases with +list [T0004]" time="0.0321" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="overwrites alias when provided +overwrite-alias always [T0005]" name="mwt-g core behaviors [T0000].overwrites alias when provided +overwrite-alias always [T0005]" time="0.0251" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="respects +overwrite-alias never [T0006]" name="mwt-g core behaviors [T0000].respects +overwrite-alias never [T0006]" time="0.034" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="produces no output when +quiet is set [T0007]" name="mwt-g core behaviors [T0000].produces no output when +quiet is set [T0007]" time="0.0226" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="creates configuration.toml with defaults when missing [T0008]" name="mwt-g core behaviors [T0000].creates configuration.toml with defaults when missing [T0008]" time="0.0199" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="performs fetch with +c and exits 0 [T0009]" name="mwt-g core behaviors [T0000].performs fetch with +c and exits 0 [T0009]" time="0.285" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="opens in browser with +b via dry-run mode [T0013]" name="mwt-g core behaviors [T0000].opens in browser with +b via dry-run mode [T0013]" time="0.0421" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="uses custom browser command when MWT_G_BROWSER_CMD is set [T0014]" name="mwt-g core behaviors [T0000].uses custom browser command when MWT_G_BROWSER_CMD is set [T0014]" time="0.0607" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="errors when +b on unknown alias [T0015]" name="mwt-g core behaviors [T0000].errors when +b on unknown alias [T0015]" time="0.0167" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="overwrites alias when adding g https://news.google.com/ [T0010]" name="mwt-g core behaviors [T0000].overwrites alias when adding g https://news.google.com/ [T0010]" time="0.0283" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="overwrites alias with +overwrite-alias always to https://www.gmail.com [T0011]" name="mwt-g core behaviors [T0000].overwrites alias with +overwrite-alias always to https://www.gmail.com [T0011]" time="0.0313" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="throws for unknown alias gx when visiting [T0012]" name="mwt-g core behaviors [T0000].throws for unknown alias gx when visiting [T0012]" time="0.0301" asserts="0" success="True" result="Success" executed="True" />
+            </results>
+          </test-suite>
+        </results>
+      </test-suite>
+    </results>
+  </test-suite>
+</test-results>

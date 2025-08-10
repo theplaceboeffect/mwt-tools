@@ -51,3 +51,20 @@ v00.01.02
   - Testing: suite is isolated, repeatable, and produces testresults.xml
 
 
+v00.01.03
+
+- Tasks executed
+  - Implemented `+b` (open in browser) with cross-platform support and test-friendly dry-run
+  - Added env vars: `MWT_G_BROWSER_DRYRUN` and `MWT_G_BROWSER_CMD`
+  - Updated usage in `bin/mwt-g.ps1` and expanded `README.md`
+  - Added Pester tests T0013–T0015
+
+- Test results
+  - Pester: 15/15 tests passing (`mwt-g/tests/test-pester.Tests.ps1`)
+
+- Commit message
+  - feat(mwt-g): add +b open-in-browser with cross-platform support; add tests and docs
+
+- Feature summary
+  - Feature-06: +b implemented and tested
+

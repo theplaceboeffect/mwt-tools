@@ -2,16 +2,22 @@
 
 Minimal URL alias helper.
 
-Features in v00.01.01:
+Features:
 - Add alias: `pwsh bin/mwt-g.ps1 <alias> <absolute-url>`
 - Display URL: `pwsh bin/mwt-g.ps1 <alias>` or `pwsh bin/mwt-g.ps1 +n <alias>`
+- Fetch via curl: `pwsh bin/mwt-g.ps1 +c <alias>`
+- Open in browser: `pwsh bin/mwt-g.ps1 +b <alias>`
 
-Storage:
-- Read precedence: `./mwt-g/settings.json` then `~/.config/mwt-g/settings.json`
-- Writes prefer project-local `./mwt-g/settings.json`
+Storage (TOML):
+- Aliases: project `./mwt-g/aliases.toml`, then user `~/.config/mwt-g/aliases.toml`
+- Configuration: project `./mwt-g/configuration.toml`, then user `~/.config/mwt-g/configuration.toml`
 
 Notes:
 - Only absolute http/https URLs are supported in this version.
-- Other actions (`+c`, `+b`, `+list`, `+register`) are not implemented yet.
+- `+register` is not implemented yet.
+
+Testing:
+- From `mwt-g/` run: `pwsh tests/run-tests.ps1`
+- This writes `testruns/<runId>/testResults.xml` and runs all Pester tests.
 
 

@@ -120,6 +120,51 @@ Describe 'mwt-g core behaviors [T0000]' {
         $LASTEXITCODE | Should -Be 0
     }
 
+    It 'opens in browser with +b via dry-run mode [T0013]' {
+        $alias = 'gb'
+        $url = 'https://example.com/b'
+        Push-Location $script:CurrentTestDir
+        try {
+            & $script:CurrentToolPath '+quiet' $alias $url | Out-Null
+            $env:MWT_G_BROWSER_DRYRUN = '1'
+            try {
+                (& $script:CurrentToolPath '+b' $alias) | Should -Be $url
+            } finally {
+                Remove-Item Env:MWT_G_BROWSER_DRYRUN -ErrorAction SilentlyContinue
+            }
+        }
+        finally { Pop-Location }
+    }
+
+    It 'uses custom browser command when MWT_G_BROWSER_CMD is set [T0014]' {
+        $alias = 'gb2'
+        $url = 'https://example.com/b2'
+        Push-Location $script:CurrentTestDir
+        try {
+            & $script:CurrentToolPath '+quiet' $alias $url | Out-Null
+            $echoApp = $null
+            try { $echoApp = (Get-Command echo -CommandType Application -ErrorAction SilentlyContinue).Path } catch { }
+            if (-not $echoApp) {
+                if (Test-Path -LiteralPath '/bin/echo') { $echoApp = '/bin/echo' }
+            }
+            if (-not $echoApp) { throw 'No external echo found for test' }
+            $env:MWT_G_BROWSER_CMD = $echoApp
+            try {
+                $out = & $script:CurrentToolPath '+b' $alias
+                @($out) -contains $url | Should -BeTrue
+            } finally {
+                Remove-Item Env:MWT_G_BROWSER_CMD -ErrorAction SilentlyContinue
+            }
+        }
+        finally { Pop-Location }
+    }
+
+    It 'errors when +b on unknown alias [T0015]' {
+        Push-Location $script:CurrentTestDir
+        try { { & $script:CurrentToolPath '+b' 'nope' | Out-Null } | Should -Throw }
+        finally { Pop-Location }
+    }
+
     It 'overwrites alias when adding g https://news.google.com/ [T0010]' {
         $alias = 'g'
         Push-Location $script:CurrentTestDir
