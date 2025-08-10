@@ -40,6 +40,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $script:QuietMode = $false
 $script:OverwriteMode = 'always'
+ 
 
 function Get-ProjectAliasesPath {
     $projectDir = Join-Path -Path (Get-Location) -ChildPath 'mwt-g'
@@ -268,6 +269,29 @@ function Resolve-AliasOrFail {
     return [string]$aliases[$Alias]
 }
 
+function Invoke-CurlFetch {
+    param([string] $Alias)
+    $url = Resolve-AliasOrFail -Alias $Alias
+
+    $curlExe = Get-Command curl -CommandType Application -ErrorAction SilentlyContinue
+    if ($curlExe) {
+        if (-not $script:QuietMode) { Write-Info "curl -sSL $url" }
+        & $curlExe.Path -sSL --retry 2 --max-time 15 --connect-timeout 5 --fail-with-body $url
+        return
+    }
+
+    # Fallback to PowerShell's web client
+    if (-not $script:QuietMode) { Write-Info "Invoke-WebRequest $url" }
+    try {
+        $resp = Invoke-WebRequest -Uri $url -Method Get -MaximumRedirection 5 -TimeoutSec 15 -ErrorAction Stop
+        if ($null -ne $resp -and $null -ne $resp.Content) { Write-Output $resp.Content }
+    }
+    catch {
+        Write-Error "Fetch failed: $($_.Exception.Message)"
+        exit 12
+    }
+}
+
 # Entry
 if (-not $ArgList -or $ArgList.Length -eq 0) {
     Show-UsageAndExit
@@ -319,6 +343,12 @@ switch ($true) {
                 $v = [string]$aliases[$k]
                 Write-Output "$k $v"
             }
+            exit 0
+        }
+        if ($first -eq '+c') {
+            if ($ArgList.Length -lt 2) { Show-UsageAndExit }
+            $alias = $ArgList[1]
+            Invoke-CurlFetch -Alias $alias
             exit 0
         }
         Write-Error "Action '$first' is not implemented in v00.01.01"

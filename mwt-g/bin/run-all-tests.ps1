@@ -1,0 +1,1 @@
+Invoke-Pester -CI -Output Detailed /Users/mwt/projects/mwt-tools/mwt-g/tests

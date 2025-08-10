@@ -25,3 +25,29 @@ v00.01.01 (this session)
   - Configuration defaults respected; overwrite behavior configurable; quiet mode supported
 
 
+v00.01.02
+
+- Tasks executed
+  - Implemented `+c` (fetch via curl); falls back to `Invoke-WebRequest` when curl is unavailable
+  - Removed all network gating; network is always enabled for `+c`
+  - Renamed tests to be version-agnostic (`test-pester.Tests.ps1`, `test-cli.ps1`)
+  - Made Pester tests standalone and independent:
+    - Unique IDs (T0001–T0012); each test runs in isolated `testruns/YYYYMMDD-HHMMSS/TXXXX/`
+    - No reliance on repo root state; copies tool into per-test sandbox
+  - Added `run-tests.ps1` to execute Pester from `mwt-g/` and write `mwt-g/testruns/<runId>/testResults.xml`
+  - Ensured all tests are executed from the `mwt-g` directory
+  - Honored optional `MWT_G_TEST_RUN_ID` to set the run folder name
+
+- Test results
+  - Pester: 12/12 tests passing (file: `mwt-g/tests/test-pester.Tests.ps1`)
+  - CLI test: passing (file: `mwt-g/tests/test-cli.ps1`)
+  - Results XML: `mwt-g/testruns/<runId>/testResults.xml`
+
+- Commit message
+  - feat(mwt-g): add +c (curl) with web request fallback; make tests version-agnostic and isolated; add test runner and NUnit XML output
+
+- Feature summary
+  - Feature-06: +c implemented and tested
+  - Testing: suite is isolated, repeatable, and produces testresults.xml
+
+
