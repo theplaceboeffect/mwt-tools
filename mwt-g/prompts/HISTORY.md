@@ -68,3 +68,21 @@ v00.01.03
 - Feature summary
   - Feature-06: +b implemented and tested
 
+v00.01.05
+
+- Tasks executed
+  - Implemented `+register` for macOS: creates an AppleScript app bundle adjacent to the script registering `goto://` scheme and invoking `+b`
+  - Added Pester tests T0016–T0018 covering registration, `open goto://` success, and no-stdout behavior
+  - Added `bin/applescript-tool.ps1` to recompile the handler, clear LaunchServices cache, and open a `goto://` alias; added T0019
+  - Hardened external command resolution and avoided reliance on `.Path`
+  - Updated README with `+register` usage
+
+- Test results
+  - Pester: 19/19 tests passing (`mwt-g/tests/test-pester.Tests.ps1`)
+
+- Commit message
+  - feat(mwt-g): add macOS URL scheme registration (+register) with tests; add applescript-tool; improve command resolution; docs update
+
+- Feature summary
+  - Feature-07: OS URL handler registration implemented and tested (macOS)
+

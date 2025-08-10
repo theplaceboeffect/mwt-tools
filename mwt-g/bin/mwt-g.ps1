@@ -33,7 +33,7 @@
 
   Notes:
     - Only absolute http/https URLs are supported in this version
-    - +c and +b are implemented; +register is not implemented yet
+    - +c and +b are implemented; +register (macOS) is implemented in v00.01.05
 !#>
 
 [CmdletBinding()]
@@ -46,7 +46,6 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $script:QuietMode = $false
 $script:OverwriteMode = 'always'
- 
 
 function Get-ProjectAliasesPath {
     $projectDir = Join-Path -Path (Get-Location) -ChildPath 'mwt-g'
@@ -205,9 +204,11 @@ Usage:
   List aliases:
     mwt-g.ps1 +list
 
+  Register URL scheme handler (+register):
+    mwt-g.ps1 +register
+
 Notes:
   - Only absolute http/https URLs are supported
-  - +register is not implemented yet
   - Flags:
       +quiet                       Suppress non-essential output
       +overwrite-alias <mode>      Mode is one of: always | never | ask
@@ -288,7 +289,8 @@ function Invoke-CurlFetch {
     $curlExe = Get-Command curl -CommandType Application -ErrorAction SilentlyContinue
     if ($curlExe) {
         if (-not $script:QuietMode) { Write-Info "curl -sSL $url" }
-        & $curlExe.Path -sSL --retry 2 --max-time 15 --connect-timeout 5 --fail-with-body $url
+        $curlPath = if ($curlExe | Get-Member -Name Path -MemberType NoteProperty,Property -ErrorAction SilentlyContinue) { $curlExe.Path } else { 'curl' }
+        & $curlPath -sSL --retry 2 --max-time 15 --connect-timeout 5 --fail-with-body $url
         return
     }
 
@@ -332,19 +334,106 @@ function Invoke-OpenBrowser {
     $openCmd = Get-Command open -ErrorAction SilentlyContinue
     if ($openCmd) {
         if (-not $script:QuietMode) { Write-Info "open $url" }
-        & $openCmd.Path $url | Out-Null
+        $openPath = if ($openCmd | Get-Member -Name Path -MemberType NoteProperty,Property -ErrorAction SilentlyContinue) { $openCmd.Path } else { 'open' }
+        & $openPath $url | Out-Null
         return
     }
     # Linux/other
     $xdgCmd = Get-Command xdg-open -ErrorAction SilentlyContinue
     if ($xdgCmd) {
         if (-not $script:QuietMode) { Write-Info "xdg-open $url" }
-        & $xdgCmd.Path $url | Out-Null
+        $xdgPath = if ($xdgCmd | Get-Member -Name Path -MemberType NoteProperty,Property -ErrorAction SilentlyContinue) { $xdgCmd.Path } else { 'xdg-open' }
+        & $xdgPath $url | Out-Null
         return
     }
 
     Write-Error "No suitable method found to open URL in browser. Tried: custom cmd, Start-Process, open, xdg-open."
     exit 13
+}
+
+function Register-UrlSchemeHandler {
+    # macOS-only implementation for v00.01.05
+    if (-not $IsMacOS) {
+        Write-Error "+register is currently supported on macOS only."
+        exit 20
+    }
+
+    function Resolve-CommandPathOrName {
+        param([string]$Name)
+        $ci = Get-Command $Name -ErrorAction SilentlyContinue
+        if (-not $ci) { return $null }
+        if ($ci | Get-Member -Name Path -MemberType NoteProperty,Property -ErrorAction SilentlyContinue) {
+            if ($ci.Path) { return [string]$ci.Path }
+        }
+        if ($ci | Get-Member -Name Source -MemberType NoteProperty,Property -ErrorAction SilentlyContinue) {
+            if ($ci.Source) { return [string]$ci.Source }
+        }
+        return [string]$Name
+    }
+
+    $osacompileExe = Resolve-CommandPathOrName 'osacompile'
+    if (-not $osacompileExe) {
+        Write-Error "Required tool 'osacompile' not found."
+        exit 21
+    }
+
+    $plistBuddy = '/usr/libexec/PlistBuddy'
+    if (-not (Test-Path -LiteralPath $plistBuddy)) {
+        Write-Error "Required tool PlistBuddy not found at $plistBuddy"
+        exit 22
+    }
+
+    $scriptPath = if ($PSCommandPath) { $PSCommandPath } else { $MyInvocation.MyCommand.Path }
+    $scriptDir  = Split-Path -Parent -Path $scriptPath
+    $appName    = 'mwt-g-url-handler.app'
+    $appPath    = Join-Path -Path $scriptDir -ChildPath $appName
+    $contentsPlist = Join-Path -Path $appPath -ChildPath 'Contents/Info.plist'
+
+    if (Test-Path -LiteralPath $appPath) {
+        try { Remove-Item -LiteralPath $appPath -Recurse -Force -ErrorAction Stop } catch { }
+    }
+
+    $applescriptPath = Join-Path -Path $scriptDir -ChildPath 'mwt-g-url-handler.applescript'
+    $projectRoot = Split-Path -Parent -Path (Split-Path -Parent -Path $scriptPath)
+
+    ## Copy from mwt-g-url-handler.applescript.template
+    $appleScript = @"
+on open location theURL
+  set urlText to (theURL as text)
+  try
+    if urlText starts with "goto://" then
+      set delimPos to offset of "://" in urlText
+      set theAlias to text (delimPos + 3) thru -1 of urlText
+      set projectDirQ to quoted form of "/Users/mwt/projects/mwt-tools/mwt-g"
+      set ps1PathQ to quoted form of "/Users/mwt/projects/mwt-tools/mwt-g/bin/mwt-g.ps1"
+      set aliasQ to quoted form of theAlias
+      set shellCmd to "cd " & projectDirQ & " && /usr/bin/env pwsh -NoProfile -File " & ps1PathQ & " +b " & aliasQ 
+      # display dialog ("About to run:\n" & shellCmd) buttons {"OK"} default button "OK" with icon note
+      do shell script shellCmd
+    end if
+  on error errMsg number errNum
+    display dialog ("ERROR: " & errMsg & " (" & errNum & ")") buttons {"OK"} default button "OK" with icon stop
+  end try
+end open location
+"@
+    Set-Content -LiteralPath $applescriptPath -Value $appleScript -Encoding UTF8
+
+    & $osacompileExe -o $appPath $applescriptPath | Out-Null
+
+    # Augment Info.plist with URL scheme declaration
+    & $plistBuddy -c 'Add :CFBundleIdentifier string com.mwt.mwt-g.urlhandler' $contentsPlist 2>$null
+    & $plistBuddy -c 'Add :CFBundleURLTypes array' $contentsPlist 2>$null
+    & $plistBuddy -c 'Add :CFBundleURLTypes:0 dict' $contentsPlist 2>$null
+    & $plistBuddy -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes array' $contentsPlist 2>$null
+    & $plistBuddy -c 'Add :CFBundleURLTypes:0:CFBundleURLSchemes:0 string goto' $contentsPlist 2>$null
+
+    # Launch once to register with LaunchServices
+    $openExe = Resolve-CommandPathOrName 'open'
+    if (-not $openExe) { Write-Error "macOS 'open' command not found"; exit 23 }
+    & $openExe $appPath | Out-Null
+    Start-Sleep -Milliseconds 500
+
+    Write-Info "+register: Installed URL handler for scheme 'goto' at $appPath targeting $scriptPath"
 }
 
 # Entry
@@ -410,6 +499,10 @@ switch ($true) {
             if ($ArgList.Length -lt 2) { Show-UsageAndExit }
             $alias = $ArgList[1]
             Invoke-OpenBrowser -Alias $alias
+            exit 0
+        }
+        if ($first -eq '+register') {
+            Register-UrlSchemeHandler
             exit 0
         }
         Write-Error "Action '$first' is not implemented"

@@ -191,6 +191,74 @@ Describe 'mwt-g core behaviors [T0000]' {
         try { { & $script:CurrentToolPath 'gx' | Out-Null } | Should -Throw }
         finally { Pop-Location }
     }
+
+    It 'registers goto:// scheme with +register on macOS [T0016]' -Skip:(-not $IsMacOS) {
+        Push-Location $script:CurrentTestDir
+        try {
+            & $script:CurrentToolPath '+register' | Out-Null
+            $LASTEXITCODE | Should -Be 0
+            $handlerApp = Join-Path -Path (Split-Path -Parent -Path $script:CurrentToolPath) -ChildPath 'mwt-g-url-handler.app'
+            Test-Path -LiteralPath $handlerApp | Should -BeTrue
+            $plist = Join-Path -Path $handlerApp -ChildPath 'Contents/Info.plist'
+            Test-Path -LiteralPath $plist | Should -BeTrue
+            $plistBuddy = '/usr/libexec/PlistBuddy'
+            if (Test-Path -LiteralPath $plistBuddy) {
+                $scheme = & $plistBuddy -c 'Print :CFBundleURLTypes:0:CFBundleURLSchemes:0' $plist
+                $scheme | Should -Be 'goto'
+            } else {
+                $raw = Get-Content -LiteralPath $plist -Raw
+                $raw | Should -Match '(?s)CFBundleURLSchemes.*goto'
+            }
+        }
+        finally { Pop-Location }
+    }
+
+    It 'open goto://y does not error after registration on macOS [T0017]' -Skip:(-not $IsMacOS) {
+        Push-Location $script:CurrentTestDir
+        try {
+            & $script:CurrentToolPath '+quiet' 'y' 'https://www.yahoo.com/' | Out-Null
+            & $script:CurrentToolPath '+register' | Out-Null
+            $openCmd = Get-Command open -ErrorAction SilentlyContinue
+            if (-not $openCmd) { throw 'open not found' }
+            $code = 0
+            try {
+                & $openCmd.Path 'goto://y' | Out-Null
+                $code = 0
+            } catch { $code = 1 }
+            $code | Should -Be 0
+        }
+        finally { Pop-Location }
+    }
+
+    It 'T0018: open goto://y produces no stdout noise [T0018]' -Skip:(-not $IsMacOS) {
+        Push-Location $script:CurrentTestDir
+        try {
+            & $script:CurrentToolPath '+quiet' 'y' 'https://www.yahoo.com/' | Out-Null
+            & $script:CurrentToolPath '+register' | Out-Null
+            $openCmd = Get-Command open -ErrorAction SilentlyContinue
+            if (-not $openCmd) { throw 'open not found' }
+            $out = & $openCmd.Path 'goto://y'
+            (@($out).Count) | Should -Be 0
+        }
+        finally { Pop-Location }
+    }
+
+    It 'recompiles handler via applescript-tool and can open goto://y [T0019]' -Skip:(-not $IsMacOS) {
+        Push-Location $script:CurrentTestDir
+        try {
+            & $script:CurrentToolPath '+quiet' 'y' 'https://www.yahoo.com/' | Out-Null
+            $tool = Join-Path -Path (Join-Path $script:SourceProjectDir 'bin') -ChildPath 'applescript-tool.ps1'
+            Test-Path -LiteralPath $tool | Should -BeTrue
+            pwsh $tool -Recompile | Out-Null
+            pwsh $tool -TestScript -OpenAlias y | Out-Null
+            $openCmd = Get-Command open -ErrorAction SilentlyContinue
+            if (-not $openCmd) { throw 'open not found' }
+            $code = 0
+            try { & $openCmd.Path 'goto://y' | Out-Null; $code = 0 } catch { $code = 1 }
+            $code | Should -Be 0
+        }
+        finally { Pop-Location }
+    }
 }
 
 
