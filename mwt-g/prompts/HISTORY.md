@@ -68,3 +68,22 @@ v00.01.03
 - Feature summary
   - Feature-06: +b implemented and tested
 
+v00.01.04
+
+- Tasks executed
+  - Implemented `bin/tests.ps1` test runner with:
+    - `-l|--list` to enumerate tests and descriptions by `[T0000]`
+    - `-r|--run <T0000>` to run a single test by ID
+    - `--runall-all` to run the full suite
+  - Adopted approved PowerShell verbs in function names
+  - Output NUnit XML to `mwt-g/testruns/<runId>/testResults.xml`
+
+- Test results
+  - Pester: 15/15 tests passing (invoked via `bin/tests.ps1`)
+
+- Commit message
+  - chore(mwt-g): add tests.ps1 runner (list, run one, run all) with NUnit XML output; conform function verbs
+
+- Feature summary
+  - Testing: ergonomics improved with simple list/run commands
+
