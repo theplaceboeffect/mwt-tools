@@ -15,7 +15,7 @@ function Assert-Equal {
     }
 }
 
-$toolPath = Join-Path -Path (Get-Location) -ChildPath 'mwt-g/bin/mwt-g.ps1'
+$toolPath = Join-Path -Path (Get-Location) -ChildPath 'bin/mwt-g.ps1'
 if (-not (Test-Path -LiteralPath $toolPath)) {
     Write-Error "Tool not found at $toolPath"
     exit 1

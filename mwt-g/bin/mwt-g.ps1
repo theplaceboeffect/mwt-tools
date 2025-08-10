@@ -5,13 +5,17 @@
   mwt-g: Minimal URL alias tool (v00.01.01)
 
 .DESCRIPTION
-  Stores simple alias -> URL mappings in JSON and resolves them.
+  Stores simple alias -> URL mappings in TOML and resolves them.
   Storage precedence when reading:
-    1) Project-local: ./mwt-g/settings.json
-    2) User-level:    ~/.config/mwt-g/settings.json
+    1) Project-local:
+       - Aliases:       ./mwt-g/aliases.toml
+       - Configuration: ./mwt-g/configuration.toml
+    2) User-level:
+       - Aliases:       ~/.config/mwt-g/aliases.toml
+       - Configuration: ~/.config/mwt-g/configuration.toml
 
-  Writing (adding aliases):
-    - Prefers project-local. Creates ./mwt-g/settings.json if missing.
+  Writing:
+    - Prefers project-local files. Creates ./mwt-g/*.toml if missing.
 
 .USAGE
   Add alias:
@@ -23,7 +27,7 @@
 
   Notes:
     - Only absolute http/https URLs are supported in v00.01.01
-    - Other actions (+c, +b, +list, +register) are not implemented yet
+    - Other actions (+c, +b, +register) are not implemented yet
 !#>
 
 [CmdletBinding()]
@@ -34,36 +38,67 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+$script:QuietMode = $false
+$script:OverwriteMode = 'always'
 
-function Get-ProjectSettingsPath {
-    $projectSettingsDirectory = Join-Path -Path (Get-Location) -ChildPath 'mwt-g'
-    return Join-Path -Path $projectSettingsDirectory -ChildPath 'settings.json'
+function Get-ProjectAliasesPath {
+    $projectDir = Join-Path -Path (Get-Location) -ChildPath 'mwt-g'
+    return Join-Path -Path $projectDir -ChildPath 'aliases.toml'
 }
 
-function Get-UserSettingsPath {
+function Get-UserAliasesPath {
     $homeDir = $env:HOME
-    if ([string]::IsNullOrWhiteSpace($homeDir)) {
-        $homeDir = $env:USERPROFILE
-    }
-    if ([string]::IsNullOrWhiteSpace($homeDir)) {
-        $homeDir = [Environment]::GetFolderPath('UserProfile')
-    }
+    if ([string]::IsNullOrWhiteSpace($homeDir)) { $homeDir = $env:USERPROFILE }
+    if ([string]::IsNullOrWhiteSpace($homeDir)) { $homeDir = [Environment]::GetFolderPath('UserProfile') }
     $userConfigDir = Join-Path -Path $homeDir -ChildPath '.config/mwt-g'
-    return Join-Path -Path $userConfigDir -ChildPath 'settings.json'
+    return Join-Path -Path $userConfigDir -ChildPath 'aliases.toml'
 }
 
-function Get-EffectiveSettingsPathForRead {
-    $projectPath = Get-ProjectSettingsPath
-    $userPath = Get-UserSettingsPath
+function Get-ProjectConfigPath {
+    $projectDir = Join-Path -Path (Get-Location) -ChildPath 'mwt-g'
+    return Join-Path -Path $projectDir -ChildPath 'configuration.toml'
+}
 
+function Get-UserConfigPath {
+    $homeDir = $env:HOME
+    if ([string]::IsNullOrWhiteSpace($homeDir)) { $homeDir = $env:USERPROFILE }
+    if ([string]::IsNullOrWhiteSpace($homeDir)) { $homeDir = [Environment]::GetFolderPath('UserProfile') }
+    $userConfigDir = Join-Path -Path $homeDir -ChildPath '.config/mwt-g'
+    return Join-Path -Path $userConfigDir -ChildPath 'configuration.toml'
+}
+
+function Get-EffectiveConfigPathForWrite {
+    $projectPath = Get-ProjectConfigPath
+    $projectDir = Split-Path -Parent -Path $projectPath
+    if (-not (Test-Path -LiteralPath $projectDir)) {
+        New-Item -ItemType Directory -Force -Path $projectDir | Out-Null
+    }
+    return $projectPath
+}
+
+function Ensure-ConfigDefaultFile {
+    $projectConfig = Get-EffectiveConfigPathForWrite
+    if (-not (Test-Path -LiteralPath $projectConfig)) {
+        $default = @(
+            '# mwt-g configuration',
+            '# Default values used when not overridden by +flags',
+            'overwrite_alias = "always"',
+            'quiet = false'
+        ) -join [Environment]::NewLine
+        Set-Content -LiteralPath $projectConfig -Value $default -Encoding UTF8
+    }
+}
+
+function Get-EffectiveAliasesPathForRead {
+    $projectPath = Get-ProjectAliasesPath
+    $userPath = Get-UserAliasesPath
     if (Test-Path -LiteralPath $projectPath) { return $projectPath }
     if (Test-Path -LiteralPath $userPath)    { return $userPath }
     return $null
 }
 
-function Get-EffectiveSettingsPathForWrite {
-    # Prefer project-local file for writes. Create directory if needed.
-    $projectPath = Get-ProjectSettingsPath
+function Get-EffectiveAliasesPathForWrite {
+    $projectPath = Get-ProjectAliasesPath
     $projectDir = Split-Path -Parent -Path $projectPath
     if (-not (Test-Path -LiteralPath $projectDir)) {
         New-Item -ItemType Directory -Force -Path $projectDir | Out-Null
@@ -72,26 +107,76 @@ function Get-EffectiveSettingsPathForWrite {
 }
 
 function Load-Aliases {
-    $path = Get-EffectiveSettingsPathForRead
+    $path = Get-EffectiveAliasesPathForRead
     if (-not $path) { return @{} }
-
-    $raw = Get-Content -LiteralPath $path -Raw -ErrorAction SilentlyContinue
-    if ([string]::IsNullOrWhiteSpace($raw)) { return @{} }
-    $json = $raw | ConvertFrom-Json -ErrorAction Stop
-
-    $map = @{}
-    $json.psobject.Properties | ForEach-Object { $map[$_.Name] = [string]$_.Value }
-    return $map
+    $lines = Get-Content -LiteralPath $path -ErrorAction SilentlyContinue
+    if ($null -eq $lines) { return @{} }
+    $aliases = @{}
+    foreach ($line in $lines) {
+        $trim = ($line.Trim())
+        if ([string]::IsNullOrWhiteSpace($trim)) { continue }
+        if ($trim.StartsWith('#')) { continue }
+        $eqIndex = $trim.IndexOf('=')
+        if ($eqIndex -lt 1) { continue }
+        $key = $trim.Substring(0, $eqIndex).Trim()
+        $val = $trim.Substring($eqIndex + 1).Trim()
+        # strip quotes if present
+        if ($val.StartsWith('"') -and $val.EndsWith('"')) { $val = $val.Trim('"') }
+        elseif ($val.StartsWith("'") -and $val.EndsWith("'")) { $val = $val.Trim("'") }
+        if (-not [string]::IsNullOrWhiteSpace($key)) { $aliases[$key] = [string]$val }
+    }
+    return $aliases
 }
 
 function Save-Aliases {
-    param(
-        [hashtable] $Aliases
-    )
-    $path = Get-EffectiveSettingsPathForWrite
-    $json = ($Aliases | ConvertTo-Json -Depth 5)
-    $json | Set-Content -LiteralPath $path -NoNewline
+    param([hashtable] $Aliases)
+    $path = Get-EffectiveAliasesPathForWrite
+    $content = "# Aliases" + [Environment]::NewLine
+    foreach ($key in ($Aliases.Keys | Sort-Object)) {
+        $valueEscaped = ($Aliases[$key] -replace '"','`"')
+        $content += ('{0} = "{1}"' -f $key, $valueEscaped) + [Environment]::NewLine
+    }
+    Set-Content -LiteralPath $path -Value $content -Encoding UTF8
     return $path
+}
+
+function Load-Config {
+    $path = $null
+    $proj = Get-ProjectConfigPath
+    $user = Get-UserConfigPath
+    if (Test-Path -LiteralPath $proj) { $path = $proj }
+    elseif (Test-Path -LiteralPath $user) { $path = $user }
+
+    $config = @{ overwrite_alias = 'always'; quiet = $false }
+    if (-not $path) { return $config }
+    $lines = Get-Content -LiteralPath $path -ErrorAction SilentlyContinue
+    if ($null -eq $lines) { return $config }
+    foreach ($line in $lines) {
+        $trim = $line.Trim()
+        if ([string]::IsNullOrWhiteSpace($trim)) { continue }
+        if ($trim.StartsWith('#')) { continue }
+        $eqIndex = $trim.IndexOf('=')
+        if ($eqIndex -lt 1) { continue }
+        $key = $trim.Substring(0, $eqIndex).Trim()
+        $val = $trim.Substring($eqIndex + 1).Trim()
+        if ($val -match '^(true|false)$') {
+            $valParsed = [bool]::Parse($val)
+        }
+        else {
+            if ($val.StartsWith('"') -and $val.EndsWith('"')) { $val = $val.Trim('"') }
+            elseif ($val.StartsWith("'") -and $val.EndsWith("'")) { $val = $val.Trim("'") }
+            $valParsed = $val
+        }
+        $config[$key] = $valParsed
+    }
+    return $config
+}
+
+function Write-Info {
+    param([string] $Message)
+    if (-not $script:QuietMode) {
+        Write-Host $Message
+    }
 }
 
 function Show-UsageAndExit {
@@ -104,9 +189,15 @@ Usage:
     mwt-g.ps1 <alias>
     mwt-g.ps1 +n <alias>
 
+  List aliases:
+    mwt-g.ps1 +list
+
 Notes:
   - Only absolute http/https URLs are supported in v00.01.01
-  - Other actions (+c, +b, +list, +register) are not implemented yet
+  - Other actions (+c, +b, +register) are not implemented yet
+  - Flags:
+      +quiet                       Suppress non-essential output
+      +overwrite-alias <mode>      Mode is one of: always | never | ask
 "@
     exit 64
 }
@@ -119,7 +210,9 @@ function Is-AbsoluteHttpUrl {
 function Add-AliasMapping {
     param(
         [string] $Alias,
-        [string] $Url
+        [string] $Url,
+        [ValidateSet('always','never','ask')]
+        [string] $Overwrite = 'always'
     )
 
     if ([string]::IsNullOrWhiteSpace($Alias)) {
@@ -139,10 +232,30 @@ function Add-AliasMapping {
         exit 2
     }
 
+    $config = Load-Config
+    if ($PSBoundParameters.ContainsKey('Overwrite') -and $Overwrite) {
+        $effectiveOverwrite = $Overwrite
+    } else {
+        $effectiveOverwrite = [string]$config['overwrite_alias']
+    }
     $aliases = Load-Aliases
+    if ($aliases.ContainsKey($Alias)) {
+        switch ($effectiveOverwrite) {
+            'never' {
+                Write-Info "Alias '$Alias' already exists. Skipping due to +overwrite-alias never."
+                return
+            }
+            'ask' {
+                # Non-interactive default: do not overwrite
+                Write-Info "Alias '$Alias' exists. +overwrite-alias ask -> not overwriting in non-interactive mode."
+                return
+            }
+            default { }
+        }
+    }
     $aliases[$Alias] = $Url
     $path = Save-Aliases -Aliases $aliases
-    Write-Host "Saved alias '$Alias' -> '$Url' at '$path'"
+    Write-Info "Saved alias '$Alias' -> '$Url' at '$path'"
 }
 
 function Resolve-AliasOrFail {
@@ -160,9 +273,32 @@ if (-not $ArgList -or $ArgList.Length -eq 0) {
     Show-UsageAndExit
 }
 
+$null = Ensure-ConfigDefaultFile
+
 $first = $ArgList[0]
 
 switch ($true) {
+    # Silent mode
+    { $first -eq '+quiet' } {
+        $script:QuietMode = $true
+        if ($ArgList.Length -lt 2) { Show-UsageAndExit }
+        $ArgList = $ArgList[1..($ArgList.Length-1)]
+        $first = $ArgList[0]
+        # fallthrough to process new $first
+    }
+
+    # Overwrite mode prefix
+    { $first -eq '+overwrite-alias' } {
+        if ($ArgList.Length -lt 2) { Write-Error "+overwrite-alias requires a mode: always|never|ask"; exit 11 }
+        $mode = $ArgList[1].ToLowerInvariant()
+        if (@('always','never','ask') -notcontains $mode) { Write-Error "Invalid overwrite mode: $mode"; exit 11 }
+        $script:OverwriteMode = $mode
+        if ($ArgList.Length -lt 3) { Show-UsageAndExit }
+        $ArgList = $ArgList[2..($ArgList.Length-1)]
+        $first = $ArgList[0]
+        # fallthrough to process new $first
+    }
+
     # Explicit +n action
     { $first -eq '+n' } {
         if ($ArgList.Length -lt 2) { Show-UsageAndExit }
@@ -175,6 +311,16 @@ switch ($true) {
 
     # Unknown +action placeholders (not implemented yet)
     { $first -like '+*' } {
+        if ($first -eq '+list') {
+            $aliases = Load-Aliases
+            if ($aliases.Count -eq 0) { return }
+            $aliases.Keys | Sort-Object | ForEach-Object {
+                $k = $_
+                $v = [string]$aliases[$k]
+                Write-Output "$k $v"
+            }
+            exit 0
+        }
         Write-Error "Action '$first' is not implemented in v00.01.01"
         exit 10
     }
@@ -183,7 +329,8 @@ switch ($true) {
     { $ArgList.Length -eq 2 } {
         $alias = $ArgList[0]
         $url = $ArgList[1]
-        Add-AliasMapping -Alias $alias -Url $url
+        $overwrite = if ($script:OverwriteMode) { $script:OverwriteMode } else { 'always' }
+        Add-AliasMapping -Alias $alias -Url $url -Overwrite $overwrite
         exit 0
     }
 
