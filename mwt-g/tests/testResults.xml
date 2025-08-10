@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<test-results xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="nunit_schema_2.5.xsd" name="Pester" total="8" errors="0" failures="0" not-run="0" inconclusive="0" ignored="0" skipped="0" invalid="0" date="2025-08-10" time="00:07:39">
+  <environment machine-name="Mac.tam.net" cwd="/Users/mwt/projects/mwt-tools" user="mwt" user-domain="" clr-version="9.0.6" os-version="24.6.0" platform="Darwin" nunit-version="2.5.8.0" />
+  <culture-info current-culture="en-US" current-uiculture="en-US" />
+  <test-suite type="TestFixture" name="Pester" executed="True" result="Success" success="True" time="0.3108" asserts="0" description="Pester">
+    <results>
+      <test-suite type="TestFixture" name="/Users/mwt/projects/mwt-tools/mwt-g/tests/test-pester-v00.01.01.Tests.ps1" executed="True" result="Success" success="True" time="0.3108" asserts="0" description="/Users/mwt/projects/mwt-tools/mwt-g/tests/test-pester-v00.01.01.Tests.ps1">
+        <results>
+          <test-suite type="TestFixture" name="mwt-g v00.01.01 core behaviors" executed="True" result="Success" success="True" time="0.1696" asserts="0" description="mwt-g v00.01.01 core behaviors">
+            <results>
+              <test-case description="adds alias to aliases.toml" name="mwt-g v00.01.01 core behaviors.adds alias to aliases.toml" time="0.0714" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="displays URL for alias (default and +n)" name="mwt-g v00.01.01 core behaviors.displays URL for alias (default and +n)" time="0.0215" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="throws for unknown alias" name="mwt-g v00.01.01 core behaviors.throws for unknown alias" time="0.0149" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="lists aliases with +list" name="mwt-g v00.01.01 core behaviors.lists aliases with +list" time="0.0097" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="overwrites alias when provided +overwrite-alias always" name="mwt-g v00.01.01 core behaviors.overwrites alias when provided +overwrite-alias always" time="0.0088" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="respects +overwrite-alias never" name="mwt-g v00.01.01 core behaviors.respects +overwrite-alias never" time="0.0051" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="produces no output when +quiet is set" name="mwt-g v00.01.01 core behaviors.produces no output when +quiet is set" time="0.013" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="creates configuration.toml with defaults when missing" name="mwt-g v00.01.01 core behaviors.creates configuration.toml with defaults when missing" time="0.0145" asserts="0" success="True" result="Success" executed="True" />
+            </results>
+          </test-suite>
+        </results>
+      </test-suite>
+    </results>
+  </test-suite>
+</test-results>
