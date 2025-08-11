@@ -1,4 +1,6 @@
+testResults.xml
 testruns/
+old-configs/
 # Logs
 logs
 *.log
