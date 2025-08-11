@@ -54,9 +54,13 @@ Describe 'mwt-g core behaviors [T0000]' {
         finally { Pop-Location }
     }
 
-    It 'throws for unknown alias [T0003]' {
+    It 'prints friendly error and exits 3 for unknown alias [T0003]' {
         Push-Location $script:CurrentTestDir
-        try { { & $script:CurrentToolPath 'gg' | Out-Null } | Should -Throw }
+        try {
+            $out = & $script:CurrentToolPath 'gg'
+            $LASTEXITCODE | Should -Be 3
+            (@($out) -join "\n") | Should -Match "Alias 'gg' not found"
+        }
         finally { Pop-Location }
     }
 
@@ -163,9 +167,13 @@ Describe 'mwt-g core behaviors [T0000]' {
         finally { Pop-Location }
     }
 
-    It 'errors when +b on unknown alias [T0015]' {
+    It 'prints friendly error and exits 3 for +b on unknown alias [T0015]' {
         Push-Location $script:CurrentTestDir
-        try { { & $script:CurrentToolPath '+b' 'nope' | Out-Null } | Should -Throw }
+        try {
+            $out = & $script:CurrentToolPath '+b' 'nope'
+            $LASTEXITCODE | Should -Be 3
+            (@($out) -join "\n") | Should -Match "Alias 'nope' not found"
+        }
         finally { Pop-Location }
     }
 
@@ -190,9 +198,13 @@ Describe 'mwt-g core behaviors [T0000]' {
         finally { Pop-Location }
     }
 
-    It 'throws for unknown alias gx when visiting [T0012]' {
+    It 'prints friendly error and exits 3 for unknown alias gx when visiting [T0012]' {
         Push-Location $script:CurrentTestDir
-        try { { & $script:CurrentToolPath 'gx' | Out-Null } | Should -Throw }
+        try {
+            $out = & $script:CurrentToolPath 'gx'
+            $LASTEXITCODE | Should -Be 3
+            (@($out) -join "\n") | Should -Match "Alias 'gx' not found"
+        }
         finally { Pop-Location }
     }
 

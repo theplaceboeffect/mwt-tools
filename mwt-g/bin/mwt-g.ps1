@@ -9,14 +9,14 @@
   Storage precedence when reading:
     1) Project-local:
        - Aliases:       ./mwt-g/aliases.toml
-       - Configuration: ./.config/mwt-g/configuration.toml (preferred) or ./mwt-g/configuration.toml (legacy)
+       - Configuration: ./mwt-g/configuration.toml
     2) User-level:
        - Aliases:       ~/.config/mwt-g/aliases.toml
        - Configuration: ~/.config/mwt-g/configuration.toml
 
   Writing:
     - Aliases: if ./mwt-g exists, write project-local; otherwise write to ~/.config/mwt-g/aliases.toml.
-    - Configuration: on first run, if no project-local config exists at ./.config/mwt-g/configuration.toml,
+    - Configuration: on first run, if no project-local config exists at ./mwt-g/configuration.toml,
       creates ~/.config/mwt-g/configuration.toml.
 
 .USAGE
@@ -48,6 +48,40 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $script:QuietMode = $false
 $script:OverwriteMode = 'always'
+$script:TracePaths = $false
+
+function Resolve-HomeDirectory {
+    $candidates = @()
+    if ($env:HOME)        { $candidates += [pscustomobject]@{ Source = 'HOME';        Path = [string]$env:HOME } }
+    
+    if ($env:USERPROFILE) { $candidates += [pscustomobject]@{ Source = 'USERPROFILE'; Path = [string]$env:USERPROFILE } }
+    
+    $dotNetUser = [Environment]::GetFolderPath('UserProfile')
+    if (-not [string]::IsNullOrWhiteSpace($dotNetUser)) {
+        $candidates += [pscustomobject]@{ Source = '.NET UserProfile'; Path = [string]$dotNetUser }
+    }
+
+    $selected = $null
+    foreach ($cand in $candidates) { if (-not [string]::IsNullOrWhiteSpace($cand.Path)) { $selected = $cand; break } }
+    if (-not $selected) { $selected = [pscustomobject]@{ Source = '.NET UserProfile'; Path = [string]$dotNetUser } }
+
+    $needsSanitize = $false
+    $isTestRun = ($env:MWT_G_TEST_RUN_ID -and -not [string]::IsNullOrWhiteSpace($env:MWT_G_TEST_RUN_ID))
+    if (-not $isTestRun -and $selected -and $selected.Path) {
+        $lower = $selected.Path.ToLowerInvariant()
+        if ($lower -match 'mwt-g/testruns') { $needsSanitize = $true }
+    }
+    if ($needsSanitize -and $dotNetUser -and $selected.Path -ne $dotNetUser) {
+        if ($script:TracePaths) { Write-Info ("[paths] HOME sanitized from {0}: {1} -> {2}" -f $selected.Source, $selected.Path, $dotNetUser) }
+        $selected = [pscustomobject]@{ Source = '.NET UserProfile'; Path = [string]$dotNetUser }
+    }
+
+    if ($script:TracePaths) {
+        foreach ($cand in $candidates) { Write-Info ("[paths] HOME candidate {0}: {1}" -f $cand.Source, $cand.Path) }
+        Write-Info ("[paths] HOME selected: {0} ({1})" -f $selected.Path, $selected.Source)
+    }
+    return [string]$selected.Path
+}
 
 function Get-ProjectAliasesPath {
     $projectDir = Join-Path -Path (Get-Location) -ChildPath 'mwt-g'
@@ -55,9 +89,7 @@ function Get-ProjectAliasesPath {
 }
 
 function Get-UserAliasesPath {
-    $homeDir = $env:HOME
-    if ([string]::IsNullOrWhiteSpace($homeDir)) { $homeDir = $env:USERPROFILE }
-    if ([string]::IsNullOrWhiteSpace($homeDir)) { $homeDir = [Environment]::GetFolderPath('UserProfile') }
+    $homeDir = Resolve-HomeDirectory
     $userConfigDir = Join-Path -Path $homeDir -ChildPath '.config/mwt-g'
     return Join-Path -Path $userConfigDir -ChildPath 'aliases.toml'
 }
@@ -68,24 +100,18 @@ function Get-ProjectConfigPath {
 }
 
 function Get-UserConfigPath {
-    $homeDir = $env:HOME
-    if ([string]::IsNullOrWhiteSpace($homeDir)) { $homeDir = $env:USERPROFILE }
-    if ([string]::IsNullOrWhiteSpace($homeDir)) { $homeDir = [Environment]::GetFolderPath('UserProfile') }
+    $homeDir = Resolve-HomeDirectory
     $userConfigDir = Join-Path -Path $homeDir -ChildPath '.config/mwt-g'
     return Join-Path -Path $userConfigDir -ChildPath 'configuration.toml'
 }
 
-function Get-LocalConfigPath {
-    $cwd = Get-Location
-    $localDir = Join-Path -Path $cwd -ChildPath '.config/mwt-g'
-    return Join-Path -Path $localDir -ChildPath 'configuration.toml'
-}
+function Get-LocalConfigPath { }
 
 function Ensure-ConfigDefaultFile {
-    # On startup, prefer an existing project-local config at ./.config/mwt-g/configuration.toml.
+    # On startup, prefer an existing project-local config at ./mwt-g/configuration.toml.
     # If none exists, ensure a user-level config exists at ~/.config/mwt-g/configuration.toml.
-    $localConfig = Get-LocalConfigPath
-    if (Test-Path -LiteralPath $localConfig) { return }
+    $projectConfig = Get-ProjectConfigPath
+    if (Test-Path -LiteralPath $projectConfig) { return }
 
     $userConfig = Get-UserConfigPath
     $userDir = Split-Path -Parent -Path $userConfig
@@ -100,14 +126,21 @@ function Ensure-ConfigDefaultFile {
             'quiet = false'
         ) -join [Environment]::NewLine
         Set-Content -LiteralPath $userConfig -Value $default -Encoding UTF8
+        if ($script:TracePaths) { Write-Info ("[paths] Created user config: {0}" -f $userConfig) }
     }
 }
 
 function Get-EffectiveAliasesPathForRead {
     $projectPath = Get-ProjectAliasesPath
     $userPath = Get-UserAliasesPath
-    if (Test-Path -LiteralPath $projectPath) { return $projectPath }
-    if (Test-Path -LiteralPath $userPath)    { return $userPath }
+    $projExists = Test-Path -LiteralPath $projectPath
+    $userExists = Test-Path -LiteralPath $userPath
+    if ($script:TracePaths) {
+        Write-Info ("[paths] Aliases candidates:\n  project: {0} (exists={1})\n  user:    {2} (exists={3})" -f $projectPath, $projExists, $userPath, $userExists)
+    }
+    if ($projExists) { if ($script:TracePaths) { Write-Info ("[paths] Aliases selected: {0}" -f $projectPath) } return $projectPath }
+    if ($userExists) { if ($script:TracePaths) { Write-Info ("[paths] Aliases selected: {0}" -f $userPath) } return $userPath }
+    if ($script:TracePaths) { Write-Info "[paths] Aliases selected: <none> (no file found)" }
     return $null
 }
 
@@ -115,14 +148,13 @@ function Get-EffectiveAliasesPathForWrite {
     $projectPath = Get-ProjectAliasesPath
     $projectDir = Split-Path -Parent -Path $projectPath
     # Prefer HOME when ./mwt-g does not exist
-    if (Test-Path -LiteralPath $projectDir) {
-        return $projectPath
-    }
+    if (Test-Path -LiteralPath $projectDir) { if ($script:TracePaths) { Write-Info ("[paths] Aliases write target: {0}" -f $projectPath) } return $projectPath }
     $userPath = Get-UserAliasesPath
     $userDir = Split-Path -Parent -Path $userPath
     if (-not (Test-Path -LiteralPath $userDir)) {
         New-Item -ItemType Directory -Force -Path $userDir | Out-Null
     }
+    if ($script:TracePaths) { Write-Info ("[paths] Aliases write target: {0}" -f $userPath) }
     return $userPath
 }
 
@@ -162,12 +194,16 @@ function Save-Aliases {
 
 function Load-Config {
     $path = $null
-    $local = Get-LocalConfigPath
     $proj = Get-ProjectConfigPath
     $user = Get-UserConfigPath
-    if (Test-Path -LiteralPath $local) { $path = $local }
-    elseif (Test-Path -LiteralPath $proj) { $path = $proj }
-    elseif (Test-Path -LiteralPath $user) { $path = $user }
+    $projExists  = Test-Path -LiteralPath $proj
+    $userExists  = Test-Path -LiteralPath $user
+    if ($script:TracePaths) {
+        Write-Info ("[paths] Config candidates:\n  project: {0} (exists={1})\n  user:    {2} (exists={3})" -f $proj, $projExists, $user, $userExists)
+    }
+    if ($projExists) { $path = $proj }
+    elseif ($userExists) { $path = $user }
+    if ($script:TracePaths) { Write-Info ("[paths] Config selected: {0}" -f ($path ? $path : '<none>')) }
 
     $config = @{ overwrite_alias = 'always'; quiet = $false }
     if (-not $path) { return $config }
@@ -228,6 +264,7 @@ Notes:
   - Flags:
       +quiet                       Suppress non-essential output
       +overwrite-alias <mode>      Mode is one of: always | never | ask
+      +paths                       Show where aliases/config are searched and selected
 "@
     exit 64
 }
@@ -292,7 +329,7 @@ function Resolve-AliasOrFail {
     param([string] $Alias)
     $aliases = Load-Aliases
     if (-not $aliases.ContainsKey($Alias)) {
-        Write-Error "Alias not found: $Alias"
+        Write-Output "Alias '$Alias' not found. Use '+list' to view available aliases or add one with: mwt-g.ps1 <alias> <url>"
         exit 3
     }
     return [string]$aliases[$Alias]
@@ -479,6 +516,15 @@ switch ($true) {
         $script:OverwriteMode = $mode
         if ($ArgList.Length -lt 3) { Show-UsageAndExit }
         $ArgList = $ArgList[2..($ArgList.Length-1)]
+        $first = $ArgList[0]
+        # fallthrough to process new $first
+    }
+
+    # Trace paths
+    { $first -eq '+paths' } {
+        $script:TracePaths = $true
+        if ($ArgList.Length -lt 2) { Show-UsageAndExit }
+        $ArgList = $ArgList[1..($ArgList.Length-1)]
         $first = $ArgList[0]
         # fallthrough to process new $first
     }
