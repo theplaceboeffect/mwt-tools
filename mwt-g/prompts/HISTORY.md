@@ -86,3 +86,22 @@ v00.01.05
 - Feature summary
   - Feature-07: OS URL handler registration implemented and tested (macOS)
 
+
+v00.01.06
+
+- Tasks executed
+  - Updated configuration file handling:
+    - On startup, prefer project-local config at `./.config/mwt-g/configuration.toml`.
+    - If missing, auto-create user-level `~/.config/mwt-g/configuration.toml`.
+    - Tests isolate HOME per test to validate behavior.
+  - Ensured test results are written under `mwt-g/testruns/<runId>/testResults.xml` by delegating `bin/run-all-tests.ps1` to `bin/tests.ps1 --run-all`.
+
+- Test results
+  - Pester: 19/19 tests passing (`mwt-g/tests/test-pester.Tests.ps1`)
+
+- Commit message
+  - chore(mwt-g): prefer local .config for config read; create user config on first run; unify test runner output to testruns
+
+- Feature summary
+  - Config handling aligned with prompt requirements; test artifacts organized per run
+

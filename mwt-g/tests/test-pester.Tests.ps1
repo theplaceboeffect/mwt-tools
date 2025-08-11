@@ -23,7 +23,11 @@ Describe 'mwt-g core behaviors [T0000]' {
 
         $script:CurrentToolPath   = Join-Path $script:CurrentTestDir 'mwt-g/bin/mwt-g.ps1'
         $script:CurrentAliases    = Join-Path $script:CurrentTestDir 'mwt-g/aliases.toml'
-        $script:CurrentConfig     = Join-Path $script:CurrentTestDir 'mwt-g/configuration.toml'
+        # Config is expected under local .config/mwt-g/ or user ~/.config/mwt-g/.
+        # For test isolation, force HOME and USERPROFILE to the test dir so user-level writes land under the test root.
+        $env:HOME = $script:CurrentTestDir
+        $env:USERPROFILE = $script:CurrentTestDir
+        $script:CurrentConfig     = Join-Path $script:CurrentTestDir '.config/mwt-g/configuration.toml'
     }
     It 'adds alias to aliases.toml [T0001]' {
         if (Test-Path -LiteralPath $script:CurrentAliases) { Remove-Item -LiteralPath $script:CurrentAliases -Force }

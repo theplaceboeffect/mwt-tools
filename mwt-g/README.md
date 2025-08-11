@@ -11,15 +11,16 @@ Features:
   - Recompile/refresh helper (macOS): `pwsh bin/applescript-tool.ps1 -Recompile`, `-ClearCache`, `-OpenAlias y`
 
 Storage (TOML):
-- Aliases: project `./mwt-g/aliases.toml`, then user `~/.config/mwt-g/aliases.toml`
-- Configuration: project `./mwt-g/configuration.toml`, then user `~/.config/mwt-g/configuration.toml`
+- Aliases: writes to project `./mwt-g/aliases.toml` if `./mwt-g` exists; otherwise writes to user `~/.config/mwt-g/aliases.toml`. Reads prefer project, then user.
+- Configuration: prefer local `./.config/mwt-g/configuration.toml`, then legacy `./mwt-g/configuration.toml`, then user `~/.config/mwt-g/configuration.toml`
+  - On first run, if no local config exists, the tool will create `~/.config/mwt-g/configuration.toml` with defaults.
 
 Notes:
 - Only absolute http/https URLs are supported in this version.
 - `+register` (macOS) installs a lightweight URL handler app next to the script to open `goto://<alias>` via `+b`.
 
 Testing:
-- From `mwt-g/` run: `pwsh tests/run-tests.ps1`
-- This writes `testruns/<runId>/testResults.xml` and runs all Pester tests.
+- From `mwt-g/` run: `pwsh tests/run-tests.ps1` or `pwsh bin/tests.ps1 --run-all`
+- Results are written to `testruns/<runId>/testResults.xml`.
 
 

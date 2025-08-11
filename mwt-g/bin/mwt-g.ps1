@@ -9,13 +9,15 @@
   Storage precedence when reading:
     1) Project-local:
        - Aliases:       ./mwt-g/aliases.toml
-       - Configuration: ./mwt-g/configuration.toml
+       - Configuration: ./.config/mwt-g/configuration.toml (preferred) or ./mwt-g/configuration.toml (legacy)
     2) User-level:
        - Aliases:       ~/.config/mwt-g/aliases.toml
        - Configuration: ~/.config/mwt-g/configuration.toml
 
   Writing:
-    - Prefers project-local files. Creates ./mwt-g/*.toml if missing.
+    - Aliases: if ./mwt-g exists, write project-local; otherwise write to ~/.config/mwt-g/aliases.toml.
+    - Configuration: on first run, if no project-local config exists at ./.config/mwt-g/configuration.toml,
+      creates ~/.config/mwt-g/configuration.toml.
 
 .USAGE
   Add alias:
@@ -73,25 +75,31 @@ function Get-UserConfigPath {
     return Join-Path -Path $userConfigDir -ChildPath 'configuration.toml'
 }
 
-function Get-EffectiveConfigPathForWrite {
-    $projectPath = Get-ProjectConfigPath
-    $projectDir = Split-Path -Parent -Path $projectPath
-    if (-not (Test-Path -LiteralPath $projectDir)) {
-        New-Item -ItemType Directory -Force -Path $projectDir | Out-Null
-    }
-    return $projectPath
+function Get-LocalConfigPath {
+    $cwd = Get-Location
+    $localDir = Join-Path -Path $cwd -ChildPath '.config/mwt-g'
+    return Join-Path -Path $localDir -ChildPath 'configuration.toml'
 }
 
 function Ensure-ConfigDefaultFile {
-    $projectConfig = Get-EffectiveConfigPathForWrite
-    if (-not (Test-Path -LiteralPath $projectConfig)) {
+    # On startup, prefer an existing project-local config at ./.config/mwt-g/configuration.toml.
+    # If none exists, ensure a user-level config exists at ~/.config/mwt-g/configuration.toml.
+    $localConfig = Get-LocalConfigPath
+    if (Test-Path -LiteralPath $localConfig) { return }
+
+    $userConfig = Get-UserConfigPath
+    $userDir = Split-Path -Parent -Path $userConfig
+    if (-not (Test-Path -LiteralPath $userDir)) {
+        New-Item -ItemType Directory -Force -Path $userDir | Out-Null
+    }
+    if (-not (Test-Path -LiteralPath $userConfig)) {
         $default = @(
             '# mwt-g configuration',
             '# Default values used when not overridden by +flags',
             'overwrite_alias = "always"',
             'quiet = false'
         ) -join [Environment]::NewLine
-        Set-Content -LiteralPath $projectConfig -Value $default -Encoding UTF8
+        Set-Content -LiteralPath $userConfig -Value $default -Encoding UTF8
     }
 }
 
@@ -106,10 +114,16 @@ function Get-EffectiveAliasesPathForRead {
 function Get-EffectiveAliasesPathForWrite {
     $projectPath = Get-ProjectAliasesPath
     $projectDir = Split-Path -Parent -Path $projectPath
-    if (-not (Test-Path -LiteralPath $projectDir)) {
-        New-Item -ItemType Directory -Force -Path $projectDir | Out-Null
+    # Prefer HOME when ./mwt-g does not exist
+    if (Test-Path -LiteralPath $projectDir) {
+        return $projectPath
     }
-    return $projectPath
+    $userPath = Get-UserAliasesPath
+    $userDir = Split-Path -Parent -Path $userPath
+    if (-not (Test-Path -LiteralPath $userDir)) {
+        New-Item -ItemType Directory -Force -Path $userDir | Out-Null
+    }
+    return $userPath
 }
 
 function Load-Aliases {
@@ -148,9 +162,11 @@ function Save-Aliases {
 
 function Load-Config {
     $path = $null
+    $local = Get-LocalConfigPath
     $proj = Get-ProjectConfigPath
     $user = Get-UserConfigPath
-    if (Test-Path -LiteralPath $proj) { $path = $proj }
+    if (Test-Path -LiteralPath $local) { $path = $local }
+    elseif (Test-Path -LiteralPath $proj) { $path = $proj }
     elseif (Test-Path -LiteralPath $user) { $path = $user }
 
     $config = @{ overwrite_alias = 'always'; quiet = $false }
