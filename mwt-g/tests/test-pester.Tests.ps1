@@ -42,14 +42,19 @@ Describe 'mwt-g core behaviors [T0000]' {
         $text | Should -Match $pattern
     }
 
-    It 'displays URL for alias (default and +n) [T0002]' {
+    It 'displays URL for +n and opens in browser by default (dry-run) [T0002]' {
         $alias = 'g'
         $url = 'https://www.google.com'
         Push-Location $script:CurrentTestDir
         try {
             (& $script:CurrentToolPath '+quiet' $alias $url) | Out-Null
             (& $script:CurrentToolPath '+n' $alias) | Should -Be $url
-            (& $script:CurrentToolPath $alias) | Should -Be $url
+            $env:MWT_G_BROWSER_DRYRUN = '1'
+            try {
+                (& $script:CurrentToolPath $alias) | Should -Be $url
+            } finally {
+                Remove-Item Env:MWT_G_BROWSER_DRYRUN -ErrorAction SilentlyContinue
+            }
         }
         finally { Pop-Location }
     }
@@ -80,7 +85,7 @@ Describe 'mwt-g core behaviors [T0000]' {
         try {
             & $script:CurrentToolPath '+quiet' $alias 'https://www.google.com' | Out-Null
             & $script:CurrentToolPath '+quiet' '+overwrite-alias' 'always' $alias 'https://www.google2.com' | Out-Null
-            (& $script:CurrentToolPath $alias) | Should -Be 'https://www.google2.com'
+            (& $script:CurrentToolPath '+n' $alias) | Should -Be 'https://www.google2.com'
         }
         finally { Pop-Location }
     }
@@ -91,7 +96,7 @@ Describe 'mwt-g core behaviors [T0000]' {
         try {
             & $script:CurrentToolPath '+quiet' $alias 'https://www.google2.com' | Out-Null
             & $script:CurrentToolPath '+quiet' '+overwrite-alias' 'never' $alias 'https://www.google3.com' | Out-Null
-            (& $script:CurrentToolPath $alias) | Should -Be 'https://www.google2.com'
+            (& $script:CurrentToolPath '+n' $alias) | Should -Be 'https://www.google2.com'
         }
         finally { Pop-Location }
     }
@@ -182,7 +187,7 @@ Describe 'mwt-g core behaviors [T0000]' {
         Push-Location $script:CurrentTestDir
         try {
             & $script:CurrentToolPath '+quiet' $alias 'https://news.google.com/' | Out-Null
-            (& $script:CurrentToolPath $alias) | Should -Be 'https://news.google.com/'
+            (& $script:CurrentToolPath '+n' $alias) | Should -Be 'https://news.google.com/'
         }
         finally { Pop-Location }
     }
@@ -193,7 +198,7 @@ Describe 'mwt-g core behaviors [T0000]' {
         try {
             & $script:CurrentToolPath '+quiet' $alias 'https://news.google.com/' | Out-Null
             & $script:CurrentToolPath '+quiet' '+overwrite-alias' 'always' $alias 'https://www.gmail.com' | Out-Null
-            (& $script:CurrentToolPath $alias) | Should -Be 'https://www.gmail.com'
+            (& $script:CurrentToolPath '+n' $alias) | Should -Be 'https://www.gmail.com'
         }
         finally { Pop-Location }
     }

@@ -4,9 +4,9 @@ Minimal URL alias helper.
 
 Features:
 - Add alias: `pwsh bin/mwt-g.ps1 <alias> <absolute-url>`
-- Display URL: `pwsh bin/mwt-g.ps1 <alias>` or `pwsh bin/mwt-g.ps1 +n <alias>`
+- Open in browser (default): `pwsh bin/mwt-g.ps1 <alias>` or `pwsh bin/mwt-g.ps1 +b <alias>`
+- Display URL: `pwsh bin/mwt-g.ps1 +n <alias>`
 - Fetch via curl: `pwsh bin/mwt-g.ps1 +c <alias>`
-- Open in browser: `pwsh bin/mwt-g.ps1 +b <alias>`
 - Register macOS URL scheme handler: `pwsh bin/mwt-g.ps1 +register`
   - Recompile/refresh helper (macOS): `pwsh bin/applescript-tool.ps1 -Recompile`, `-ClearCache`, `-OpenAlias y`
 

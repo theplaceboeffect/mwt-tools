@@ -23,15 +23,12 @@
   Add alias:
     mwt-g.ps1 <alias> <absolute-url>
 
-  Display URL (+n is default action):
+  Open in default browser (+b is default action):
     mwt-g.ps1 <alias>
-    mwt-g.ps1 +n <alias>
-
-  Fetch via curl (+c):
-    mwt-g.ps1 +c <alias>
-
-  Open in default browser (+b):
     mwt-g.ps1 +b <alias>
+
+  Display URL (+n):
+    mwt-g.ps1 +n <alias>
 
   Notes:
     - Only absolute http/https URLs are supported in this version
@@ -243,15 +240,15 @@ Usage:
   Add alias:
     mwt-g.ps1 <alias> <absolute-url>
 
-  Display URL (+n is default):
+  Open in default browser (+b is default):
     mwt-g.ps1 <alias>
+    mwt-g.ps1 +b <alias>
+
+  Display URL (+n):
     mwt-g.ps1 +n <alias>
 
   Fetch via curl (+c):
     mwt-g.ps1 +c <alias>
-
-  Open in default browser (+b):
-    mwt-g.ps1 +b <alias>
 
   List aliases:
     mwt-g.ps1 +list
@@ -580,11 +577,10 @@ switch ($true) {
         exit 0
     }
 
-    # Default action: display URL (+n) for <alias>
+    # Default action: open in browser (+b) for <alias>
     { $ArgList.Length -eq 1 } {
         $alias = $ArgList[0]
-        $url = Resolve-AliasOrFail -Alias $alias
-        Write-Output $url
+        Invoke-OpenBrowser -Alias $alias
         exit 0
     }
 
