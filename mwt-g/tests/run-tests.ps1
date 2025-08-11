@@ -27,6 +27,19 @@ try {
     } catch {
         Set-Content -LiteralPath $resultsFile -Value '<test-results generated="manual-error" />' -Encoding UTF8
     }
+
+    # If a legacy testResults.xml exists at project root, move it into this run's directory
+    $legacyResults = Join-Path $projectDir 'testResults.xml'
+    if (Test-Path -LiteralPath $legacyResults) {
+        try {
+            Move-Item -LiteralPath $legacyResults -Destination $resultsFile -Force -ErrorAction Stop
+        } catch {
+            # If move fails, attempt to copy instead to avoid losing results
+            try { Copy-Item -LiteralPath $legacyResults -Destination $resultsFile -Force } catch { }
+            # Best-effort cleanup of legacy file
+            try { Remove-Item -LiteralPath $legacyResults -Force } catch { }
+        }
+    }
 }
 finally {
     Pop-Location

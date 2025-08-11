@@ -23,7 +23,11 @@ Describe 'mwt-g core behaviors [T0000]' {
 
         $script:CurrentToolPath   = Join-Path $script:CurrentTestDir 'mwt-g/bin/mwt-g.ps1'
         $script:CurrentAliases    = Join-Path $script:CurrentTestDir 'mwt-g/aliases.toml'
-        $script:CurrentConfig     = Join-Path $script:CurrentTestDir 'mwt-g/configuration.toml'
+        # Config is expected under local .config/mwt-g/ or user ~/.config/mwt-g/.
+        # For test isolation, force HOME and USERPROFILE to the test dir so user-level writes land under the test root.
+        $env:HOME = $script:CurrentTestDir
+        $env:USERPROFILE = $script:CurrentTestDir
+        $script:CurrentConfig     = Join-Path $script:CurrentTestDir '.config/mwt-g/configuration.toml'
     }
     It 'adds alias to aliases.toml [T0001]' {
         if (Test-Path -LiteralPath $script:CurrentAliases) { Remove-Item -LiteralPath $script:CurrentAliases -Force }
@@ -38,21 +42,30 @@ Describe 'mwt-g core behaviors [T0000]' {
         $text | Should -Match $pattern
     }
 
-    It 'displays URL for alias (default and +n) [T0002]' {
+    It 'displays URL for +n and opens in browser by default (dry-run) [T0002]' {
         $alias = 'g'
         $url = 'https://www.google.com'
         Push-Location $script:CurrentTestDir
         try {
             (& $script:CurrentToolPath '+quiet' $alias $url) | Out-Null
             (& $script:CurrentToolPath '+n' $alias) | Should -Be $url
-            (& $script:CurrentToolPath $alias) | Should -Be $url
+            $env:MWT_G_BROWSER_DRYRUN = '1'
+            try {
+                (& $script:CurrentToolPath $alias) | Should -Be $url
+            } finally {
+                Remove-Item Env:MWT_G_BROWSER_DRYRUN -ErrorAction SilentlyContinue
+            }
         }
         finally { Pop-Location }
     }
 
-    It 'throws for unknown alias [T0003]' {
+    It 'prints friendly error and exits 3 for unknown alias [T0003]' {
         Push-Location $script:CurrentTestDir
-        try { { & $script:CurrentToolPath 'gg' | Out-Null } | Should -Throw }
+        try {
+            $out = & $script:CurrentToolPath 'gg'
+            $LASTEXITCODE | Should -Be 3
+            (@($out) -join "\n") | Should -Match "Alias 'gg' not found"
+        }
         finally { Pop-Location }
     }
 
@@ -72,7 +85,7 @@ Describe 'mwt-g core behaviors [T0000]' {
         try {
             & $script:CurrentToolPath '+quiet' $alias 'https://www.google.com' | Out-Null
             & $script:CurrentToolPath '+quiet' '+overwrite-alias' 'always' $alias 'https://www.google2.com' | Out-Null
-            (& $script:CurrentToolPath $alias) | Should -Be 'https://www.google2.com'
+            (& $script:CurrentToolPath '+n' $alias) | Should -Be 'https://www.google2.com'
         }
         finally { Pop-Location }
     }
@@ -83,7 +96,7 @@ Describe 'mwt-g core behaviors [T0000]' {
         try {
             & $script:CurrentToolPath '+quiet' $alias 'https://www.google2.com' | Out-Null
             & $script:CurrentToolPath '+quiet' '+overwrite-alias' 'never' $alias 'https://www.google3.com' | Out-Null
-            (& $script:CurrentToolPath $alias) | Should -Be 'https://www.google2.com'
+            (& $script:CurrentToolPath '+n' $alias) | Should -Be 'https://www.google2.com'
         }
         finally { Pop-Location }
     }
@@ -159,9 +172,13 @@ Describe 'mwt-g core behaviors [T0000]' {
         finally { Pop-Location }
     }
 
-    It 'errors when +b on unknown alias [T0015]' {
+    It 'prints friendly error and exits 3 for +b on unknown alias [T0015]' {
         Push-Location $script:CurrentTestDir
-        try { { & $script:CurrentToolPath '+b' 'nope' | Out-Null } | Should -Throw }
+        try {
+            $out = & $script:CurrentToolPath '+b' 'nope'
+            $LASTEXITCODE | Should -Be 3
+            (@($out) -join "\n") | Should -Match "Alias 'nope' not found"
+        }
         finally { Pop-Location }
     }
 
@@ -170,7 +187,7 @@ Describe 'mwt-g core behaviors [T0000]' {
         Push-Location $script:CurrentTestDir
         try {
             & $script:CurrentToolPath '+quiet' $alias 'https://news.google.com/' | Out-Null
-            (& $script:CurrentToolPath $alias) | Should -Be 'https://news.google.com/'
+            (& $script:CurrentToolPath '+n' $alias) | Should -Be 'https://news.google.com/'
         }
         finally { Pop-Location }
     }
@@ -181,14 +198,18 @@ Describe 'mwt-g core behaviors [T0000]' {
         try {
             & $script:CurrentToolPath '+quiet' $alias 'https://news.google.com/' | Out-Null
             & $script:CurrentToolPath '+quiet' '+overwrite-alias' 'always' $alias 'https://www.gmail.com' | Out-Null
-            (& $script:CurrentToolPath $alias) | Should -Be 'https://www.gmail.com'
+            (& $script:CurrentToolPath '+n' $alias) | Should -Be 'https://www.gmail.com'
         }
         finally { Pop-Location }
     }
 
-    It 'throws for unknown alias gx when visiting [T0012]' {
+    It 'prints friendly error and exits 3 for unknown alias gx when visiting [T0012]' {
         Push-Location $script:CurrentTestDir
-        try { { & $script:CurrentToolPath 'gx' | Out-Null } | Should -Throw }
+        try {
+            $out = & $script:CurrentToolPath 'gx'
+            $LASTEXITCODE | Should -Be 3
+            (@($out) -join "\n") | Should -Match "Alias 'gx' not found"
+        }
         finally { Pop-Location }
     }
 

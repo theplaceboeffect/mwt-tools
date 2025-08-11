@@ -42,9 +42,14 @@ try {
     $outN = & $toolPath '+n' $alias
     Assert-Equal -Expected $url -Actual $outN -Message '+n should print exact URL'
 
-    # default action
-    $outDefault = & $toolPath $alias
-    Assert-Equal -Expected $url -Actual $outDefault -Message 'default action should print exact URL'
+    # default action should open browser; use dry-run to capture URL
+    $env:MWT_G_BROWSER_DRYRUN = '1'
+    try {
+        $outDefault = & $toolPath $alias
+        Assert-Equal -Expected $url -Actual $outDefault -Message 'default action should open browser (dry-run emits URL)'
+    } finally {
+        Remove-Item Env:MWT_G_BROWSER_DRYRUN -ErrorAction SilentlyContinue
+    }
 
     Write-Host 'All CLI tests passed'
     exit 0
