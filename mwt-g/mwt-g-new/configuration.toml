@@ -1,4 +1,0 @@
-# mwt-g configuration
-# Default values used when not overridden by +flags
-overwrite_alias = "always"
-quiet = false
