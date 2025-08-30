@@ -18,11 +18,11 @@ Describe 'mwt-g core behaviors [T0000]' {
         $script:TestCounter++
         $id = ('T{0}' -f ($script:TestCounter.ToString('0000')))
         $script:CurrentTestDir = Join-Path -Path $script:TestRoot -ChildPath $id
-        $null = New-Item -ItemType Directory -Force -Path (Join-Path $script:CurrentTestDir 'mwt-g/bin')
-        Copy-Item -LiteralPath $script:SourceToolPath -Destination (Join-Path $script:CurrentTestDir 'mwt-g/bin/mwt-g.ps1') -Force
+        $null = New-Item -ItemType Directory -Force -Path (Join-Path $script:CurrentTestDir 'bin')
+        Copy-Item -LiteralPath $script:SourceToolPath -Destination (Join-Path $script:CurrentTestDir 'bin/mwt-g.ps1') -Force
 
-        $script:CurrentToolPath   = Join-Path $script:CurrentTestDir 'mwt-g/bin/mwt-g.ps1'
-        $script:CurrentAliases    = Join-Path $script:CurrentTestDir 'mwt-g/aliases.toml'
+        $script:CurrentToolPath   = Join-Path $script:CurrentTestDir 'bin/mwt-g.ps1'
+        $script:CurrentAliases    = Join-Path $script:CurrentTestDir 'aliases.toml'
         # Config is expected under local .config/mwt-g/ or user ~/.config/mwt-g/.
         # For test isolation, force HOME and USERPROFILE to the test dir so user-level writes land under the test root.
         $env:HOME = $script:CurrentTestDir

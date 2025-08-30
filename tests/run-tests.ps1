@@ -4,13 +4,13 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $testsDir = Split-Path -Parent -Path $PSCommandPath
-# Run from mwt-g directory and write outputs under mwt-g/testruns/YYYYMMDD-HHMMSS
+# Run from project root directory and write outputs under testruns/YYYYMMDD-HHMMSS
 $projectDir = Split-Path -Parent -Path $testsDir
 $runId = Get-Date -Format 'yyyyMMdd-HHmmss'
 $env:MWT_G_TEST_RUN_ID = $runId
 Push-Location $projectDir
 try {
-    # Run once and emit NUnit XML directly to mwt-g/testruns/<runId>/testResults.xml
+    # Run once and emit NUnit XML directly to testruns/<runId>/testResults.xml
     $resultsDir = Join-Path $projectDir (Join-Path 'testruns' $runId)
     if (-not (Test-Path -LiteralPath $resultsDir)) { New-Item -ItemType Directory -Force -Path $resultsDir | Out-Null }
     $resultsFile = Join-Path $resultsDir 'testResults.xml'

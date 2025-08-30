@@ -15,7 +15,7 @@ function Assert-Equal {
     }
 }
 
-$projectDir = Split-Path -Parent -Path $PSScriptRoot  # mwt-g
+$projectDir = Split-Path -Parent -Path $PSScriptRoot
 $toolPath = Join-Path -Path $projectDir -ChildPath 'bin/mwt-g.ps1'
 if (-not (Test-Path -LiteralPath $toolPath)) {
     Write-Error "Tool not found at $toolPath"

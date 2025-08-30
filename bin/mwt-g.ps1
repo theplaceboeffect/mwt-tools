@@ -8,37 +8,21 @@
   Stores simple alias -> URL mappings in TOML and resolves them.
   Storage precedence when reading:
     1) Project-local:
-       - Aliases:       ./mwt-g/aliases.toml
-       - Configuration: ./mwt-g/configuration.toml
+       - Aliases:       ./aliases.toml
+       - Configuration: ./configuration.toml
     2) User-level:
        - Aliases:       ~/.config/mwt-g/aliases.toml
        - Configuration: ~/.config/mwt-g/configuration.toml
 
   Writing:
-<<<<<<< HEAD
-    - Prefers project-local files. Creates ./mwt-g/*.toml if missing.
-=======
-    - Aliases: if ./mwt-g exists, write project-local; otherwise write to ~/.config/mwt-g/aliases.toml.
-    - Configuration: on first run, if no project-local config exists at ./mwt-g/configuration.toml,
+    - Aliases: write project-local to ./aliases.toml.
+    - Configuration: on first run, if no project-local config exists at ./configuration.toml,
       creates ~/.config/mwt-g/configuration.toml.
->>>>>>> mwt-g--v00.01.06--gpt5
 
 .USAGE
   Add alias:
     mwt-g.ps1 <alias> <absolute-url>
 
-<<<<<<< HEAD
-  Display URL (+n is default action):
-    mwt-g.ps1 <alias>
-    mwt-g.ps1 +n <alias>
-
-  Fetch via curl (+c):
-    mwt-g.ps1 +c <alias>
-
-  Open in default browser (+b):
-    mwt-g.ps1 +b <alias>
-
-=======
   Open in default browser (+b is default action):
     mwt-g.ps1 <alias>
     mwt-g.ps1 +b <alias>
@@ -46,7 +30,6 @@
   Display URL (+n):
     mwt-g.ps1 +n <alias>
 
->>>>>>> mwt-g--v00.01.06--gpt5
   Notes:
     - Only absolute http/https URLs are supported in this version
     - +c and +b are implemented; +register (macOS) is implemented in v00.01.05
@@ -62,8 +45,6 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $script:QuietMode = $false
 $script:OverwriteMode = 'always'
-<<<<<<< HEAD
-=======
 $script:TracePaths = $false
 
 function Resolve-HomeDirectory {
@@ -85,7 +66,7 @@ function Resolve-HomeDirectory {
     $isTestRun = ($env:MWT_G_TEST_RUN_ID -and -not [string]::IsNullOrWhiteSpace($env:MWT_G_TEST_RUN_ID))
     if (-not $isTestRun -and $selected -and $selected.Path) {
         $lower = $selected.Path.ToLowerInvariant()
-        if ($lower -match 'mwt-g/testruns') { $needsSanitize = $true }
+        if ($lower -match 'testruns') { $needsSanitize = $true }
     }
     if ($needsSanitize -and $dotNetUser -and $selected.Path -ne $dotNetUser) {
         if ($script:TracePaths) { Write-Info ("[paths] HOME sanitized from {0}: {1} -> {2}" -f $selected.Source, $selected.Path, $dotNetUser) }
@@ -98,60 +79,33 @@ function Resolve-HomeDirectory {
     }
     return [string]$selected.Path
 }
->>>>>>> mwt-g--v00.01.06--gpt5
 
 function Get-ProjectAliasesPath {
-    $projectDir = Join-Path -Path (Get-Location) -ChildPath 'mwt-g'
+    $projectDir = Get-Location
     return Join-Path -Path $projectDir -ChildPath 'aliases.toml'
 }
 
 function Get-UserAliasesPath {
-<<<<<<< HEAD
-    $homeDir = $env:HOME
-    if ([string]::IsNullOrWhiteSpace($homeDir)) { $homeDir = $env:USERPROFILE }
-    if ([string]::IsNullOrWhiteSpace($homeDir)) { $homeDir = [Environment]::GetFolderPath('UserProfile') }
-=======
     $homeDir = Resolve-HomeDirectory
->>>>>>> mwt-g--v00.01.06--gpt5
     $userConfigDir = Join-Path -Path $homeDir -ChildPath '.config/mwt-g'
     return Join-Path -Path $userConfigDir -ChildPath 'aliases.toml'
 }
 
 function Get-ProjectConfigPath {
-    $projectDir = Join-Path -Path (Get-Location) -ChildPath 'mwt-g'
+    $projectDir = Get-Location
     return Join-Path -Path $projectDir -ChildPath 'configuration.toml'
 }
 
 function Get-UserConfigPath {
-<<<<<<< HEAD
-    $homeDir = $env:HOME
-    if ([string]::IsNullOrWhiteSpace($homeDir)) { $homeDir = $env:USERPROFILE }
-    if ([string]::IsNullOrWhiteSpace($homeDir)) { $homeDir = [Environment]::GetFolderPath('UserProfile') }
-=======
     $homeDir = Resolve-HomeDirectory
->>>>>>> mwt-g--v00.01.06--gpt5
     $userConfigDir = Join-Path -Path $homeDir -ChildPath '.config/mwt-g'
     return Join-Path -Path $userConfigDir -ChildPath 'configuration.toml'
 }
 
-<<<<<<< HEAD
-function Get-EffectiveConfigPathForWrite {
-    $projectPath = Get-ProjectConfigPath
-    $projectDir = Split-Path -Parent -Path $projectPath
-    if (-not (Test-Path -LiteralPath $projectDir)) {
-        New-Item -ItemType Directory -Force -Path $projectDir | Out-Null
-    }
-    return $projectPath
-}
-
-function Ensure-ConfigDefaultFile {
-    $projectConfig = Get-EffectiveConfigPathForWrite
-    if (-not (Test-Path -LiteralPath $projectConfig)) {
-=======
 function Get-LocalConfigPath { }
 
 function Ensure-ConfigDefaultFile {
-    # On startup, prefer an existing project-local config at ./mwt-g/configuration.toml.
+    # On startup, prefer an existing project-local config at ./configuration.toml.
     # If none exists, ensure a user-level config exists at ~/.config/mwt-g/configuration.toml.
     $projectConfig = Get-ProjectConfigPath
     if (Test-Path -LiteralPath $projectConfig) { return }
@@ -162,29 +116,20 @@ function Ensure-ConfigDefaultFile {
         New-Item -ItemType Directory -Force -Path $userDir | Out-Null
     }
     if (-not (Test-Path -LiteralPath $userConfig)) {
->>>>>>> mwt-g--v00.01.06--gpt5
         $default = @(
             '# mwt-g configuration',
             '# Default values used when not overridden by +flags',
             'overwrite_alias = "always"',
             'quiet = false'
         ) -join [Environment]::NewLine
-<<<<<<< HEAD
-        Set-Content -LiteralPath $projectConfig -Value $default -Encoding UTF8
-=======
         Set-Content -LiteralPath $userConfig -Value $default -Encoding UTF8
         if ($script:TracePaths) { Write-Info ("[paths] Created user config: {0}" -f $userConfig) }
->>>>>>> mwt-g--v00.01.06--gpt5
     }
 }
 
 function Get-EffectiveAliasesPathForRead {
     $projectPath = Get-ProjectAliasesPath
     $userPath = Get-UserAliasesPath
-<<<<<<< HEAD
-    if (Test-Path -LiteralPath $projectPath) { return $projectPath }
-    if (Test-Path -LiteralPath $userPath)    { return $userPath }
-=======
     $projExists = Test-Path -LiteralPath $projectPath
     $userExists = Test-Path -LiteralPath $userPath
     if ($script:TracePaths) {
@@ -193,29 +138,13 @@ function Get-EffectiveAliasesPathForRead {
     if ($projExists) { if ($script:TracePaths) { Write-Info ("[paths] Aliases selected: {0}" -f $projectPath) } return $projectPath }
     if ($userExists) { if ($script:TracePaths) { Write-Info ("[paths] Aliases selected: {0}" -f $userPath) } return $userPath }
     if ($script:TracePaths) { Write-Info "[paths] Aliases selected: <none> (no file found)" }
->>>>>>> mwt-g--v00.01.06--gpt5
     return $null
 }
 
 function Get-EffectiveAliasesPathForWrite {
     $projectPath = Get-ProjectAliasesPath
-    $projectDir = Split-Path -Parent -Path $projectPath
-<<<<<<< HEAD
-    if (-not (Test-Path -LiteralPath $projectDir)) {
-        New-Item -ItemType Directory -Force -Path $projectDir | Out-Null
-    }
+    if ($script:TracePaths) { Write-Info ("[paths] Aliases write target: {0}" -f $projectPath) }
     return $projectPath
-=======
-    # Prefer HOME when ./mwt-g does not exist
-    if (Test-Path -LiteralPath $projectDir) { if ($script:TracePaths) { Write-Info ("[paths] Aliases write target: {0}" -f $projectPath) } return $projectPath }
-    $userPath = Get-UserAliasesPath
-    $userDir = Split-Path -Parent -Path $userPath
-    if (-not (Test-Path -LiteralPath $userDir)) {
-        New-Item -ItemType Directory -Force -Path $userDir | Out-Null
-    }
-    if ($script:TracePaths) { Write-Info ("[paths] Aliases write target: {0}" -f $userPath) }
-    return $userPath
->>>>>>> mwt-g--v00.01.06--gpt5
 }
 
 function Load-Aliases {
@@ -256,10 +185,6 @@ function Load-Config {
     $path = $null
     $proj = Get-ProjectConfigPath
     $user = Get-UserConfigPath
-<<<<<<< HEAD
-    if (Test-Path -LiteralPath $proj) { $path = $proj }
-    elseif (Test-Path -LiteralPath $user) { $path = $user }
-=======
     $projExists  = Test-Path -LiteralPath $proj
     $userExists  = Test-Path -LiteralPath $user
     if ($script:TracePaths) {
@@ -268,7 +193,6 @@ function Load-Config {
     if ($projExists) { $path = $proj }
     elseif ($userExists) { $path = $user }
     if ($script:TracePaths) { Write-Info ("[paths] Config selected: {0}" -f ($path ? $path : '<none>')) }
->>>>>>> mwt-g--v00.01.06--gpt5
 
     $config = @{ overwrite_alias = 'always'; quiet = $false }
     if (-not $path) { return $config }
@@ -308,27 +232,16 @@ Usage:
   Add alias:
     mwt-g.ps1 <alias> <absolute-url>
 
-<<<<<<< HEAD
-  Display URL (+n is default):
-    mwt-g.ps1 <alias>
-=======
   Open in default browser (+b is default):
     mwt-g.ps1 <alias>
     mwt-g.ps1 +b <alias>
 
   Display URL (+n):
->>>>>>> mwt-g--v00.01.06--gpt5
     mwt-g.ps1 +n <alias>
 
   Fetch via curl (+c):
     mwt-g.ps1 +c <alias>
 
-<<<<<<< HEAD
-  Open in default browser (+b):
-    mwt-g.ps1 +b <alias>
-
-=======
->>>>>>> mwt-g--v00.01.06--gpt5
   List aliases:
     mwt-g.ps1 +list
 
@@ -340,10 +253,7 @@ Notes:
   - Flags:
       +quiet                       Suppress non-essential output
       +overwrite-alias <mode>      Mode is one of: always | never | ask
-<<<<<<< HEAD
-=======
       +paths                       Show where aliases/config are searched and selected
->>>>>>> mwt-g--v00.01.06--gpt5
 "@
     exit 64
 }
@@ -408,11 +318,7 @@ function Resolve-AliasOrFail {
     param([string] $Alias)
     $aliases = Load-Aliases
     if (-not $aliases.ContainsKey($Alias)) {
-<<<<<<< HEAD
-        Write-Error "Alias not found: $Alias"
-=======
         Write-Output "Alias '$Alias' not found. Use '+list' to view available aliases or add one with: mwt-g.ps1 <alias> <url>"
->>>>>>> mwt-g--v00.01.06--gpt5
         exit 3
     }
     return [string]$aliases[$Alias]
@@ -540,8 +446,8 @@ on open location theURL
     if urlText starts with "goto://" then
       set delimPos to offset of "://" in urlText
       set theAlias to text (delimPos + 3) thru -1 of urlText
-      set projectDirQ to quoted form of "/Users/mwt/projects/mwt-tools/mwt-g"
-      set ps1PathQ to quoted form of "/Users/mwt/projects/mwt-tools/mwt-g/bin/mwt-g.ps1"
+      set projectDirQ to quoted form of "/Users/mwt/projects/mwt-goto"
+      set ps1PathQ to quoted form of "/Users/mwt/projects/mwt-goto/bin/mwt-g.ps1"
       set aliasQ to quoted form of theAlias
       set shellCmd to "cd " & projectDirQ & " && /usr/bin/env pwsh -NoProfile -File " & ps1PathQ & " +b " & aliasQ 
       # display dialog ("About to run:\n" & shellCmd) buttons {"OK"} default button "OK" with icon note
@@ -603,8 +509,6 @@ switch ($true) {
         # fallthrough to process new $first
     }
 
-<<<<<<< HEAD
-=======
     # Trace paths
     { $first -eq '+paths' } {
         $script:TracePaths = $true
@@ -614,7 +518,6 @@ switch ($true) {
         # fallthrough to process new $first
     }
 
->>>>>>> mwt-g--v00.01.06--gpt5
     # Explicit +n action
     { $first -eq '+n' } {
         if ($ArgList.Length -lt 2) { Show-UsageAndExit }
@@ -666,18 +569,10 @@ switch ($true) {
         exit 0
     }
 
-<<<<<<< HEAD
-    # Default action: display URL (+n) for <alias>
-    { $ArgList.Length -eq 1 } {
-        $alias = $ArgList[0]
-        $url = Resolve-AliasOrFail -Alias $alias
-        Write-Output $url
-=======
     # Default action: open in browser (+b) for <alias>
     { $ArgList.Length -eq 1 } {
         $alias = $ArgList[0]
         Invoke-OpenBrowser -Alias $alias
->>>>>>> mwt-g--v00.01.06--gpt5
         exit 0
     }
 
